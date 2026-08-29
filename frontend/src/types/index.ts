@@ -56,6 +56,7 @@ export interface Settings {
   evolution_api_key: string | null;
   verify_token: string | null;
   meta_ad_account_id: string | null;
+  meta_waba_id: string | null;
   attribution_model: AttributionModel | null;
   created_at: string | null;
   updated_at: string | null;

@@ -104,15 +104,55 @@ router.post('/whatsapp/:connectionId?', async (req, res) => {
 });
 
 // ─── Evolution webhook ────────────────────────────────────────────────────────
+// URL: /webhook/evolution/:connectionId
+// Configure this exact URL (with the connection's numeric ID) as the webhook
+// URL on the Evolution API instance, so each instance routes to the right tenant.
 
-router.post('/evolution', async (req, res) => {
+router.post('/evolution/:connectionId?', async (req, res) => {
   try {
+    const connIdParam = (req.params as Record<string, string | undefined>)['connectionId'];
+
+    let tenantId: number | null = null;
+    let apiKey: string | null = null;
+    let connCredentials: { meta_access_token?: string | null; meta_ad_account_id?: string | null } | undefined;
+
+    if (connIdParam) {
+      const connId = parseInt(connIdParam, 10);
+      const conn = await getConnection(connId);
+      if (conn) {
+        tenantId = conn.tenant_id ?? null;
+        apiKey = conn.evolution_api_key ?? null;
+        connCredentials = { meta_access_token: conn.meta_access_token, meta_ad_account_id: conn.meta_ad_account_id };
+      }
+    }
+
+    if (!connIdParam) {
+      console.warn('[webhook/evolution] received without connectionId — cannot route to a tenant. Configure the webhook URL as /webhook/evolution/:connectionId');
+      res.status(200).json({ status: 'ok' });
+      return;
+    }
+
+    if (tenantId === null) {
+      console.warn(`[webhook/evolution] connection ${connIdParam} not found or has no tenant`);
+      res.status(200).json({ status: 'ok' });
+      return;
+    }
+
+    // Validate shared secret if the connection has evolution_api_key configured.
+    // Set the same value as a custom header (e.g. "apikey") on the Evolution instance's webhook config.
+    if (apiKey) {
+      const provided = (req.headers['apikey'] as string | undefined) ?? (req.query['apikey'] as string | undefined);
+      if (provided !== apiKey) {
+        res.status(401).json({ status: 'unauthorized' });
+        return;
+      }
+    }
+
     const parsed = parseEvolution(req.body);
     if (parsed) {
-      // Evolution doesn't have connection-based routing yet
-      // Log and skip processing if no tenant context
-      console.warn('[webhook/evolution] received but no tenant routing implemented');
+      setImmediate(() => processIncomingMessage(parsed, tenantId!, connCredentials));
     }
+
     res.status(200).json({ status: 'ok' });
   } catch (err) {
     console.error('[webhook/evolution] error:', err);

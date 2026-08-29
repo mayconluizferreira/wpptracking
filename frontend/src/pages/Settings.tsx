@@ -368,7 +368,7 @@ export default function Settings() {
       setMetaToken('');
       setMetaPixelId(settings.meta_pixel_id ?? '');
       setMetaPageId(settings.meta_page_id ?? '');
-      setMetaWabaId((settings as Record<string, unknown>).meta_waba_id as string ?? '');
+      setMetaWabaId(settings.meta_waba_id ?? '');
       setMetaAdAccountId(settings.meta_ad_account_id ?? '');
       setAttributionModel(settings.attribution_model ?? 'ultimo_clique');
       setCloudiaSecret('');
