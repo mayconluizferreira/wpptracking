@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { db } from '../db/index';
 import { settings, leads } from '../db/schema';
 import type { NewSettings } from '../db/schema';
@@ -131,14 +132,22 @@ router.post('/test-meta', requireAuth, async (req, res, next) => {
       return;
     }
     // Test by sending a dry-run event (test_event_code) to the CAPI endpoint.
-    // This validates both the token and pixel without requiring ads_read permission.
+    // This validates the token and pixel without requiring ads_read permission.
+    //
+    // NOTE: we deliberately use action_source "website" here, not "business_messaging".
+    // Meta strictly validates business_messaging events even in test mode and requires
+    // a real ctwa_clid (error_subcode 2804087 "ctwa_clid inválido" for any synthetic
+    // value) — that id only exists once someone actually clicks a live Click-to-WhatsApp
+    // ad, so it can't be faked here. This "website" test still proves the Access Token
+    // and Pixel ID are valid and can send events; full validation of the WhatsApp/CAPI
+    // chain (page_id, WABA id, ctwa_clid) only happens with a real end-to-end ad click.
     const testPayload = {
       data: [{
         event_name: 'TestEvent',
         event_time: Math.floor(Date.now() / 1000),
-        action_source: 'business_messaging',
-        messaging_channel: 'whatsapp',
-        user_data: { ph: 'test' },
+        action_source: 'website',
+        event_source_url: `https://${req.headers['x-forwarded-host'] ?? req.get('host')}`,
+        user_data: { ph: crypto.createHash('sha256').update('5511999999999').digest('hex') },
       }],
       test_event_code: 'TEST',
     };

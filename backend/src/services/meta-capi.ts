@@ -13,6 +13,7 @@ interface CapiUserData {
   ln?: string;
   ctwa_clid?: string;
   whatsapp_business_account_id?: string;
+  page_id?: string;
 }
 
 interface CapiEvent {
@@ -49,7 +50,7 @@ async function sendCapiEvent(
   }
 }
 
-function buildUserData(lead: Lead, wabaId?: string | null): CapiUserData {
+function buildUserData(lead: Lead, wabaId?: string | null, pageId?: string | null): CapiUserData {
   const userData: CapiUserData = {
     ph: hashPhone(lead.telefone),
   };
@@ -63,6 +64,8 @@ function buildUserData(lead: Lead, wabaId?: string | null): CapiUserData {
   if (lead.ctwaclid) userData.ctwa_clid = lead.ctwaclid;
   // WABA ID is required for business_messaging CTWA events (error 2804116 without it)
   if (wabaId) userData.whatsapp_business_account_id = wabaId;
+  // page_id is required for business_messaging events (error_subcode 2804069 without it)
+  if (pageId) userData.page_id = pageId;
 
   return userData;
 }
@@ -87,7 +90,7 @@ export async function sendLeadSubmitted(lead: Lead, tenantId: number): Promise<C
     event_name: 'LeadSubmitted',
     event_time: Math.floor(Date.now() / 1000),
     messaging_channel: 'whatsapp',
-    user_data: buildUserData(lead, cfg.meta_waba_id),
+    user_data: buildUserData(lead, cfg.meta_waba_id, cfg.meta_page_id),
   };
 
   const ok = await sendCapiEvent(cfg.meta_pixel_id, cfg.meta_access_token, event);
@@ -116,7 +119,7 @@ export async function sendQualifiedLead(lead: Lead, tenantId: number): Promise<C
     event_name: 'QualifiedLead',
     event_time: Math.floor(Date.now() / 1000),
     messaging_channel: 'whatsapp',
-    user_data: buildUserData(lead, cfg.meta_waba_id),
+    user_data: buildUserData(lead, cfg.meta_waba_id, cfg.meta_page_id),
   };
 
   const ok = await sendCapiEvent(cfg.meta_pixel_id, cfg.meta_access_token, event);
