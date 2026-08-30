@@ -22,6 +22,7 @@ interface CapiEvent {
   event_time: number;
   messaging_channel: string;
   user_data: CapiUserData;
+  custom_data?: { value: number; currency: string };
 }
 
 async function sendCapiEvent(
@@ -129,6 +130,44 @@ export async function sendQualifiedLead(lead: Lead, tenantId: number): Promise<C
       .set({ qualified_lead_sent: true })
       .where(eq(leads.id, lead.id));
     console.log(`[meta-capi] QualifiedLead sent for lead ${lead.id}`);
+    return 'sent';
+  }
+  return 'failed';
+}
+
+// Fires when a lead's status becomes 'ganho' with a sale value attached.
+// Distinct from QualifiedLead: this is what lets Meta's delivery algorithm
+// learn from actual revenue (value-based optimization / lookalikes), not
+// just from who qualified.
+export async function sendPurchase(lead: Lead, tenantId: number): Promise<CapiResult> {
+  if (lead.purchase_sent) return 'sent';
+  if (!lead.ctwaclid) return 'skipped';
+  if (lead.valor == null) return 'skipped';
+
+  const cfg = await getSettings(tenantId);
+  if (!cfg?.meta_pixel_id || !cfg?.meta_access_token) {
+    return 'skipped';
+  }
+
+  const value = parseFloat(lead.valor);
+  if (isNaN(value) || value <= 0) return 'skipped';
+
+  const event: CapiEvent = {
+    action_source: 'business_messaging',
+    event_name: 'Purchase',
+    event_time: Math.floor(Date.now() / 1000),
+    messaging_channel: 'whatsapp',
+    user_data: buildUserData(lead, cfg.meta_waba_id, cfg.meta_page_id),
+    custom_data: { value, currency: lead.moeda ?? 'BRL' },
+  };
+
+  const ok = await sendCapiEvent(cfg.meta_pixel_id, cfg.meta_access_token, event);
+  if (ok) {
+    await db
+      .update(leads)
+      .set({ purchase_sent: true })
+      .where(eq(leads.id, lead.id));
+    console.log(`[meta-capi] Purchase sent for lead ${lead.id} (value: ${value} ${lead.moeda ?? 'BRL'})`);
     return 'sent';
   }
   return 'failed';

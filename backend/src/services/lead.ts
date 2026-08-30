@@ -5,7 +5,7 @@ import { eq, and, gte, lt, desc } from 'drizzle-orm';
 import type { ParsedMessage } from '../types/parsed-message';
 import { normalizePhone } from './hash';
 import { fetchAdData } from './meta-graph';
-import { sendLeadSubmitted, sendQualifiedLead } from './meta-capi';
+import { sendLeadSubmitted, sendQualifiedLead, sendPurchase } from './meta-capi';
 import { getSettings } from './settings-cache';
 import { getTriggerPhrases } from './trigger-cache';
 
@@ -207,14 +207,24 @@ export async function processIncomingMessage(
   }
 }
 
-export async function updateLeadStatus(id: number, status: LeadStatus): Promise<Lead | null> {
+export async function updateLeadStatus(
+  id: number,
+  status: LeadStatus,
+  sale?: { valor: number; moeda?: string }
+): Promise<Lead | null> {
   const updates: Partial<Lead & { updated_at: Date }> = {
     status,
     updated_at: new Date(),
   };
 
   if (status === 'qualificado') updates.data_qualificacao = new Date();
-  if (status === 'ganho') updates.data_ganho = new Date();
+  if (status === 'ganho') {
+    updates.data_ganho = new Date();
+    if (sale?.valor != null) {
+      updates.valor = sale.valor.toString();
+      updates.moeda = sale.moeda ?? 'BRL';
+    }
+  }
 
   const [updated] = await db.update(leads).set(updates).where(eq(leads.id, id)).returning();
 
@@ -224,6 +234,13 @@ export async function updateLeadStatus(id: number, status: LeadStatus): Promise<
   if ((status === 'qualificado' || status === 'ganho') && !updated.qualified_lead_sent && updated.tenant_id) {
     sendQualifiedLead(updated, updated.tenant_id).catch((err) =>
       console.error('[lead] sendQualifiedLead error:', err)
+    );
+  }
+
+  // Fire Purchase CAPI when a sale value was attached
+  if (status === 'ganho' && !updated.purchase_sent && updated.tenant_id) {
+    sendPurchase(updated, updated.tenant_id).catch((err) =>
+      console.error('[lead] sendPurchase error:', err)
     );
   }
 

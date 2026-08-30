@@ -5,6 +5,7 @@ import {
   text,
   boolean,
   integer,
+  numeric,
   timestamp,
   jsonb,
   unique,
@@ -128,9 +129,13 @@ export const leads = pgTable('leads', {
   tipo_midia: text('tipo_midia'),
   thumbnail_url: text('thumbnail_url'),
   url_anuncio: text('url_anuncio'),
+  // Sale value (filled in when status becomes 'ganho')
+  valor: numeric('valor', { precision: 12, scale: 2 }),
+  moeda: text('moeda').default('BRL'),
   // CAPI flags
   lead_submitted_sent: boolean('lead_submitted_sent').default(false),
   qualified_lead_sent: boolean('qualified_lead_sent').default(false),
+  purchase_sent: boolean('purchase_sent').default(false),
   capi_retry_count: integer('capi_retry_count').default(0),
   // Connection
   connection_id: integer('connection_id').references(() => connections.id, { onDelete: 'set null' }),

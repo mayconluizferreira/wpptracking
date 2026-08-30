@@ -49,7 +49,7 @@ export const leadsService = {
 
   getById: (id: number) => api.get<Lead>(`/leads/${id}`),
 
-  update: (id: number, data: { status?: string; nome?: string }) =>
+  update: (id: number, data: { status?: string; nome?: string; valor?: number; moeda?: string }) =>
     api.patch<Lead>(`/leads/${id}`, data),
 
   getMessages: (id: number, page = 1, limit = 50) =>

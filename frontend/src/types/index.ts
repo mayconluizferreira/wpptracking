@@ -25,8 +25,11 @@ export interface Lead {
   tipo_midia: string | null;
   thumbnail_url: string | null;
   url_anuncio: string | null;
+  valor: string | null;
+  moeda: string | null;
   lead_submitted_sent: boolean | null;
   qualified_lead_sent: boolean | null;
+  purchase_sent: boolean | null;
   capi_retry_count: number | null;
   created_at: string | null;
   updated_at: string | null;

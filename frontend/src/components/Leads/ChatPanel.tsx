@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   Megaphone,
   Clock,
@@ -70,9 +70,62 @@ interface ChatPanelProps {
 export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
   const leadId = lead.id;
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [askingValor, setAskingValor] = useState(false);
+  const [valorInput, setValorInput] = useState('');
 
   const { data: msgPages, fetchNextPage, hasNextPage, isLoading: loadingMsgs } = useLeadMessages(leadId);
   const updateLead = useUpdateLead();
+
+  // 'ganho' needs a sale value to send the Purchase event to Meta CAPI —
+  // ask for it inline instead of firing the status change immediately.
+  function handleStatusClick(s: LeadStatus) {
+    if (s === 'ganho' && lead.status !== 'ganho') {
+      setValorInput(lead.valor ?? '');
+      setAskingValor(true);
+      return;
+    }
+    updateLead.mutate({ id: leadId, data: { status: s } });
+  }
+
+  function confirmGanho() {
+    const valor = parseFloat(valorInput.replace(',', '.'));
+    updateLead.mutate({
+      id: leadId,
+      data: { status: 'ganho', ...(valor > 0 ? { valor, moeda: 'BRL' } : {}) },
+    });
+    setAskingValor(false);
+  }
+
+  const valorPrompt = askingValor ? (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 space-y-2">
+      <p className="text-xs text-gray-400">Valor da venda (R$) — opcional, mas necessário pra Meta otimizar por ROAS</p>
+      <div className="flex gap-2">
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          autoFocus
+          value={valorInput}
+          onChange={(e) => setValorInput(e.target.value)}
+          placeholder="0,00"
+          className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white"
+        />
+        <button
+          onClick={confirmGanho}
+          disabled={updateLead.isPending}
+          className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
+        >
+          Confirmar
+        </button>
+        <button
+          onClick={() => setAskingValor(false)}
+          className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   const allMessages = msgPages?.pages.flatMap((p) => p.messages) ?? [];
 
@@ -164,7 +217,7 @@ export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
             {STATUS_OPTIONS.map((s) => (
               <button
                 key={s}
-                onClick={() => updateLead.mutate({ id: leadId, data: { status: s } })}
+                onClick={() => handleStatusClick(s)}
                 disabled={updateLead.isPending}
                 className={`transition-opacity hover:opacity-80 ${s === lead.status ? 'ring-2 ring-white/20 rounded-full' : 'opacity-50'}`}
               >
@@ -172,6 +225,7 @@ export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
               </button>
             ))}
           </div>
+          {valorPrompt}
         </div>
 
         {/* Ad data compact */}
@@ -199,7 +253,7 @@ export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
               {STATUS_OPTIONS.map((s) => (
                 <button
                   key={s}
-                  onClick={() => updateLead.mutate({ id: leadId, data: { status: s } })}
+                  onClick={() => handleStatusClick(s)}
                   disabled={updateLead.isPending}
                   className={`transition-opacity hover:opacity-80 ${s === lead.status ? 'ring-2 ring-white/20 rounded-full' : 'opacity-50'}`}
                 >
@@ -207,6 +261,7 @@ export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
                 </button>
               ))}
             </div>
+            {valorPrompt}
           </div>
         </div>
 
@@ -263,6 +318,14 @@ export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
               <TimelineItem label="Ganho" date={lead.data_ganho} color="green" />
             )}
           </div>
+          {lead.valor && (
+            <div className="mt-3 pt-3 border-t border-gray-800">
+              <p className="text-xs text-gray-500">Valor da venda</p>
+              <p className="text-sm font-semibold text-green-400">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: lead.moeda ?? 'BRL' }).format(parseFloat(lead.valor))}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* CAPI Status */}
@@ -271,6 +334,7 @@ export function ChatPanel({ lead, compact = false }: ChatPanelProps) {
           <div className="space-y-2">
             <CapiBadge label="LeadSubmitted" sent={lead.lead_submitted_sent} />
             <CapiBadge label="QualifiedLead" sent={lead.qualified_lead_sent} />
+            <CapiBadge label="Purchase" sent={lead.purchase_sent} />
           </div>
         </div>
       </div>

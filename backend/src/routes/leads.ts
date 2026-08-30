@@ -99,6 +99,8 @@ const updateSchema = z.object({
   campanha: z.string().nullable().optional(),
   conjunto_anuncio: z.string().nullable().optional(),
   anuncio: z.string().nullable().optional(),
+  valor: z.number().positive().optional(),
+  moeda: z.string().optional(),
 });
 
 router.patch('/:id', async (req, res, next) => {
@@ -121,11 +123,11 @@ router.patch('/:id', async (req, res, next) => {
       return;
     }
 
-    const { status, nome, campanha, conjunto_anuncio, anuncio } = result.data;
+    const { status, nome, campanha, conjunto_anuncio, anuncio, valor, moeda } = result.data;
     let lead;
 
     if (status) {
-      lead = await updateLeadStatus(id, status);
+      lead = await updateLeadStatus(id, status, valor != null ? { valor, moeda } : undefined);
     }
 
     const directUpdate: Record<string, unknown> = { updated_at: new Date() };
