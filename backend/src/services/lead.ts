@@ -110,13 +110,10 @@ export async function processIncomingMessage(
     let isNew = false;
 
     if (!existing) {
-      // Only create leads that came from an ad (have ctwaclid)
-      if (!parsed.veioDeAnuncio || !parsed.ctwaclid) {
-        await logWebhook(tenantId, parsed.source, parsed.rawPayload, false, 'Ignorado: lead orgânico sem ctwaclid');
-        return;
-      }
-
-      // New lead
+      // Create a lead for every incoming conversation — with ad data when
+      // available (ctwaclid present), marked 'organico' otherwise. This lets
+      // the CRM track real conversations even when ad attribution isn't
+      // available (e.g. Evolution API not surfacing ctwa referral data).
       isNew = true;
       const newLead: NewLead = {
         tenant_id: tenantId,
