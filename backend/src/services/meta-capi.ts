@@ -20,7 +20,7 @@ interface CapiEvent {
   action_source: string;
   event_name: string;
   event_time: number;
-  messaging_channel: string;
+  messaging_channel?: string;
   user_data: CapiUserData;
   custom_data?: { value: number; currency: string };
 }
@@ -51,6 +51,13 @@ async function sendCapiEvent(
   }
 }
 
+// Builds user_data for a phone-based conversion event. Doesn't require
+// ctwa_clid/page_id/waba_id — Meta matches the hashed phone against its own
+// identity graph (WhatsApp/Instagram/Facebook) to feed general ad account
+// optimization, instead of attributing to one specific ad click. Confirmed
+// working against the live CAPI endpoint with action_source "other".
+// If a ctwa_clid IS available (a real ad click was captured), we still send
+// it — it can only make the match more precise, never hurts.
 function buildUserData(lead: Lead, wabaId?: string | null, pageId?: string | null): CapiUserData {
   const userData: CapiUserData = {
     ph: hashPhone(lead.telefone),
@@ -63,9 +70,7 @@ function buildUserData(lead: Lead, wabaId?: string | null, pageId?: string | nul
   }
 
   if (lead.ctwaclid) userData.ctwa_clid = lead.ctwaclid;
-  // WABA ID is required for business_messaging CTWA events (error 2804116 without it)
   if (wabaId) userData.whatsapp_business_account_id = wabaId;
-  // page_id is required for business_messaging events (error_subcode 2804069 without it)
   if (pageId) userData.page_id = pageId;
 
   return userData;
@@ -73,12 +78,11 @@ function buildUserData(lead: Lead, wabaId?: string | null, pageId?: string | nul
 
 // 'sent' = API called and succeeded
 // 'failed' = API called but returned error (increment retry count)
-// 'skipped' = not attempted (missing ctwaclid or settings not configured yet)
+// 'skipped' = not attempted (settings not configured yet)
 export type CapiResult = 'sent' | 'failed' | 'skipped';
 
 export async function sendLeadSubmitted(lead: Lead, tenantId: number): Promise<CapiResult> {
   if (lead.lead_submitted_sent) return 'sent';
-  if (!lead.ctwaclid) return 'skipped';
 
   const cfg = await getSettings(tenantId);
   if (!cfg?.meta_pixel_id || !cfg?.meta_access_token) {
@@ -87,10 +91,9 @@ export async function sendLeadSubmitted(lead: Lead, tenantId: number): Promise<C
   }
 
   const event: CapiEvent = {
-    action_source: 'business_messaging',
+    action_source: 'other',
     event_name: 'LeadSubmitted',
     event_time: Math.floor(Date.now() / 1000),
-    messaging_channel: 'whatsapp',
     user_data: buildUserData(lead, cfg.meta_waba_id, cfg.meta_page_id),
   };
 
@@ -108,7 +111,6 @@ export async function sendLeadSubmitted(lead: Lead, tenantId: number): Promise<C
 
 export async function sendQualifiedLead(lead: Lead, tenantId: number): Promise<CapiResult> {
   if (lead.qualified_lead_sent) return 'sent';
-  if (!lead.ctwaclid) return 'skipped';
 
   const cfg = await getSettings(tenantId);
   if (!cfg?.meta_pixel_id || !cfg?.meta_access_token) {
@@ -116,10 +118,9 @@ export async function sendQualifiedLead(lead: Lead, tenantId: number): Promise<C
   }
 
   const event: CapiEvent = {
-    action_source: 'business_messaging',
+    action_source: 'other',
     event_name: 'QualifiedLead',
     event_time: Math.floor(Date.now() / 1000),
-    messaging_channel: 'whatsapp',
     user_data: buildUserData(lead, cfg.meta_waba_id, cfg.meta_page_id),
   };
 
@@ -141,7 +142,6 @@ export async function sendQualifiedLead(lead: Lead, tenantId: number): Promise<C
 // just from who qualified.
 export async function sendPurchase(lead: Lead, tenantId: number): Promise<CapiResult> {
   if (lead.purchase_sent) return 'sent';
-  if (!lead.ctwaclid) return 'skipped';
   if (lead.valor == null) return 'skipped';
 
   const cfg = await getSettings(tenantId);
@@ -153,10 +153,9 @@ export async function sendPurchase(lead: Lead, tenantId: number): Promise<CapiRe
   if (isNaN(value) || value <= 0) return 'skipped';
 
   const event: CapiEvent = {
-    action_source: 'business_messaging',
+    action_source: 'other',
     event_name: 'Purchase',
     event_time: Math.floor(Date.now() / 1000),
-    messaging_channel: 'whatsapp',
     user_data: buildUserData(lead, cfg.meta_waba_id, cfg.meta_page_id),
     custom_data: { value, currency: lead.moeda ?? 'BRL' },
   };
