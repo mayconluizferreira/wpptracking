@@ -17,6 +17,7 @@ export interface ParsedMessage {
   veioDeAnuncio: boolean;
   source: WebhookSource;
   rawPayload: unknown;
+  imageBase64: string | null;
 }
 
 export interface ParsedCloudiaEvent {

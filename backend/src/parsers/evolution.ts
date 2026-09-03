@@ -14,11 +14,12 @@ interface EvolutionPayload {
     message?: {
       conversation?: string;
       extendedTextMessage?: { text?: string };
-      imageMessage?: { caption?: string };
+      imageMessage?: { caption?: string; base64?: string };
       videoMessage?: { caption?: string };
       documentMessage?: { caption?: string; fileName?: string };
       audioMessage?: Record<string, unknown>;
       stickerMessage?: Record<string, unknown>;
+      base64?: string;
     };
     contextInfo?: {
       externalAdReply?: {
@@ -47,6 +48,15 @@ function detectTipo(message: EvolutionPayload['data']['message']): ParsedMessage
   if (message.audioMessage) return 'audio';
   if (message.stickerMessage) return 'sticker';
   return 'outros';
+}
+
+// When "Webhook Base64" is enabled on the Evolution instance, media messages
+// carry the decoded file as base64 — either on the specific media type
+// object (e.g. imageMessage.base64) or on the message object itself,
+// depending on Evolution's version. Check both.
+function extractImageBase64(message: EvolutionPayload['data']['message']): string | null {
+  if (!message?.imageMessage) return null;
+  return message.imageMessage.base64 ?? message.base64 ?? null;
 }
 
 function extractContent(message: EvolutionPayload['data']['message']): string | null {
@@ -98,6 +108,7 @@ export function parseEvolution(payload: unknown): ParsedMessage | null {
         veioDeAnuncio: false,
         source: 'evolution',
         rawPayload: payload,
+        imageBase64: null,
       };
     }
 
@@ -125,6 +136,7 @@ export function parseEvolution(payload: unknown): ParsedMessage | null {
       veioDeAnuncio,
       source: 'evolution',
       rawPayload: payload,
+      imageBase64: extractImageBase64(data.data?.message),
     };
   } catch {
     return null;

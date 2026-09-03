@@ -6,6 +6,7 @@ import type { ParsedMessage } from '../types/parsed-message';
 import { normalizePhone } from './hash';
 import { fetchAdData } from './meta-graph';
 import { sendLeadSubmitted, sendQualifiedLead, sendPurchase } from './meta-capi';
+import { extractPaymentValue } from './openai-vision';
 import { getSettings } from './settings-cache';
 import { getTriggerPhrases } from './trigger-cache';
 
@@ -184,6 +185,31 @@ export async function processIncomingMessage(
       await sendLeadSubmitted(existing, tenantId).catch((err) =>
         console.error('[lead] sendLeadSubmitted error:', err)
       );
+    }
+
+    // 6. Auto-detect payment receipt images (Pix, etc) and mark as 'ganho'
+    // when the value can be read with high confidence. Never auto-marks on
+    // low confidence or ambiguous reads — falls back to manual confirmation.
+    if (parsed.tipo === 'imagem' && parsed.imageBase64 && process.env.OPENAI_API_KEY) {
+      try {
+        const extraction = await extractPaymentValue(parsed.imageBase64, process.env.OPENAI_API_KEY);
+        console.log(`[lead] receipt extraction for lead ${existing.id}:`, extraction);
+        if (
+          extraction?.isPaymentReceipt &&
+          extraction.confidence === 'high' &&
+          extraction.value != null &&
+          extraction.value > 0 &&
+          existing.status !== 'ganho'
+        ) {
+          await updateLeadStatus(existing.id, 'ganho', {
+            valor: extraction.value,
+            moeda: extraction.currency,
+          });
+          console.log(`[lead] auto-marked lead ${existing.id} as ganho (R$ ${extraction.value}) from receipt image`);
+        }
+      } catch (err) {
+        console.error('[lead] receipt extraction error:', err);
+      }
     }
 
     // Mark webhook as processed

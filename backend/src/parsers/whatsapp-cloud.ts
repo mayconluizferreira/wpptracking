@@ -108,6 +108,7 @@ export function parseWhatsAppCloud(payload: unknown): ParsedMessage | null {
       veioDeAnuncio,
       source: 'whatsapp_cloud',
       rawPayload: payload,
+      imageBase64: null,
     };
   } catch {
     return null;
