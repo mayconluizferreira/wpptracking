@@ -7,7 +7,7 @@ import { StatusBadge, OrigemBadge } from '../components/ui/Badge';
 import { StatusDropdown } from '../components/ui/StatusDropdown';
 import { LeadCard } from '../components/Leads/LeadCard';
 import { ChatModal } from '../components/Leads/ChatModal';
-import { formatDateTime, formatPhone, truncate } from '../utils/format';
+import { formatDateTime, formatPhone, truncate, getCountryInfo } from '../utils/format';
 import { triggerPhrasesService } from '../services/api';
 import toast from 'react-hot-toast';
 import type { LeadFilters, LeadStatus, LeadOrigem } from '../types';
@@ -25,6 +25,12 @@ const ORIGEM_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todas as origens' },
   { value: 'anuncio', label: 'Anúncio' },
   { value: 'organico', label: 'Orgânico' },
+];
+
+const PAIS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos os países' },
+  { value: 'BR', label: '🇧🇷 Brasil' },
+  { value: 'US', label: '🇺🇸 Estados Unidos' },
 ];
 
 const PIPELINE_COLUMNS: Array<{
@@ -158,6 +164,16 @@ export default function Leads() {
             ))}
           </select>
 
+          {/* País */}
+          <select
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none"
+            onChange={(e) => setFilter('pais', e.target.value)}
+          >
+            {PAIS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
           {/* Date from */}
           <input
             type="date"
@@ -208,6 +224,7 @@ export default function Leads() {
                 <tr className="border-b border-gray-800">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nome</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Telefone</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">País</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Origem</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Campanha</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -219,11 +236,11 @@ export default function Leads() {
               <tbody className="divide-y divide-gray-800">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Carregando...</td>
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">Carregando...</td>
                   </tr>
                 ) : data?.leads.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Nenhum lead encontrado</td>
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">Nenhum lead encontrado</td>
                   </tr>
                 ) : (
                   data?.leads.map((lead) => (
@@ -249,6 +266,11 @@ export default function Leads() {
                           {formatPhone(lead.telefone)}
                           <ExternalLink className="w-3 h-3" />
                         </a>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span title={getCountryInfo(lead.telefone).label} className="text-base">
+                          {getCountryInfo(lead.telefone).flag}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <OrigemBadge origem={lead.origem} />

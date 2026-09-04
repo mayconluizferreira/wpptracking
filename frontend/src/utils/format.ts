@@ -61,6 +61,16 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
+// Derives country from the phone's DDI prefix. Only distinguishes what this
+// business actually targets (Brasil, Estados Unidos) — anything else falls
+// back to a generic "outro" bucket rather than guessing.
+export function getCountryInfo(phone: string): { code: 'BR' | 'US' | 'outro'; flag: string; label: string } {
+  const d = phone.replace(/\D/g, '');
+  if (d.startsWith('55')) return { code: 'BR', flag: '🇧🇷', label: 'Brasil' };
+  if (d.startsWith('1')) return { code: 'US', flag: '🇺🇸', label: 'Estados Unidos' };
+  return { code: 'outro', flag: '🌐', label: 'Outro' };
+}
+
 export function maskToken(token: string | null | undefined): string {
   if (!token || token.length <= 4) return '****';
   if (token.startsWith('****')) return token;

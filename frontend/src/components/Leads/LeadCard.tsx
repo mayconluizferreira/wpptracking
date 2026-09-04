@@ -1,7 +1,7 @@
 import { ExternalLink, CheckCircle2, Clock } from 'lucide-react';
 import { StatusBadge, OrigemBadge } from '../ui/Badge';
 import { StatusDropdown } from '../ui/StatusDropdown';
-import { formatDateTime, formatPhone, truncate } from '../../utils/format';
+import { formatDateTime, formatPhone, truncate, getCountryInfo } from '../../utils/format';
 import type { Lead, LeadStatus } from '../../types';
 
 interface LeadCardProps {
@@ -24,6 +24,9 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         </div>
         <span className="font-medium text-white text-sm truncate">
           {lead.nome ?? 'Sem nome'}
+        </span>
+        <span title={getCountryInfo(lead.telefone).label} className="text-sm flex-shrink-0">
+          {getCountryInfo(lead.telefone).flag}
         </span>
       </div>
 

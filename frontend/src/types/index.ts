@@ -135,6 +135,7 @@ export interface LeadFilters {
   campanha?: string;
   date_from?: string;
   date_to?: string;
+  pais?: string;
   page?: number;
   limit?: number;
 }

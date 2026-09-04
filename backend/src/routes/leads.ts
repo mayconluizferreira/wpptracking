@@ -17,7 +17,7 @@ router.use(requireAuth);
 router.get('/', async (req, res, next) => {
   try {
     const { tenantId } = (req as unknown as AuthRequest).user;
-    const { status, origem, search, campanha, date_from, date_to } = req.query as Record<string, string>;
+    const { status, origem, search, campanha, date_from, date_to, pais } = req.query as Record<string, string>;
     const page = parseInt((req.query.page as string) ?? '1', 10);
     const limit = Math.min(parseInt((req.query.limit as string) ?? '50', 10), 100);
     const offset = (page - 1) * limit;
@@ -27,6 +27,9 @@ router.get('/', async (req, res, next) => {
     if (status) conditions.push(eq(leads.status, status as LeadStatus));
     if (origem) conditions.push(eq(leads.origem, origem as 'anuncio' | 'organico'));
     if (campanha) conditions.push(ilike(leads.campanha, `%${campanha}%`));
+    // País derivado do DDI no início do telefone (55 = Brasil, 1 = EUA/Canadá)
+    if (pais === 'BR') conditions.push(ilike(leads.telefone, '55%'));
+    if (pais === 'US') conditions.push(ilike(leads.telefone, '1%'));
     if (date_from) conditions.push(gte(leads.data_entrada, new Date(date_from)));
     if (date_to) conditions.push(lte(leads.data_entrada, new Date(date_to)));
     if (search) {
