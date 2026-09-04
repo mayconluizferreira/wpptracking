@@ -8,7 +8,6 @@ import {
   numeric,
   timestamp,
   jsonb,
-  unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -141,10 +140,7 @@ export const leads = pgTable('leads', {
   connection_id: integer('connection_id').references(() => connections.id, { onDelete: 'set null' }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  // Unique per tenant — NULL != NULL so different tenants can share phones
-  tenant_phone_unique: unique('leads_tenant_phone_unique').on(table.tenant_id, table.telefone),
-}));
+});
 
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),

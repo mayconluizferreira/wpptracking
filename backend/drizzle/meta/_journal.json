@@ -50,6 +50,13 @@
       "when": 1773978258914,
       "tag": "0006_add_purchase_value",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773978258915,
+      "tag": "0007_drop_leads_phone_unique",
+      "breakpoints": true
     }
   ]
 }
