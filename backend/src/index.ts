@@ -27,10 +27,13 @@ app.use(
 
 // Raw body parser ONLY for WhatsApp webhook (needed for HMAC signature validation)
 // Matches both /webhook/whatsapp and /webhook/whatsapp/:connectionId
-app.use(/^\/webhook\/whatsapp(\/\d+)?$/, express.raw({ type: 'application/json' }));
+// 15mb limit: WhatsApp Cloud API media messages can carry base64-ish payload sizes.
+app.use(/^\/webhook\/whatsapp(\/\d+)?$/, express.raw({ type: 'application/json', limit: '15mb' }));
 
-// JSON parser for all other routes
-app.use(express.json());
+// JSON parser for all other routes.
+// 15mb limit: the Evolution webhook can carry base64-encoded image data
+// (with "Webhook Base64" enabled) well over Express's 100kb default.
+app.use(express.json({ limit: '15mb' }));
 
 // Routes
 app.use('/api/auth', authRouter);
