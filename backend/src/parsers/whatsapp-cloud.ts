@@ -1,5 +1,5 @@
 import type { ParsedMessage } from '../types/parsed-message';
-import { normalizePhone } from '../services/hash';
+import { normalizePhoneFromJid } from '../services/hash';
 
 interface WhatsAppCloudPayload {
   object: string;
@@ -71,7 +71,7 @@ export function parseWhatsAppCloud(payload: unknown): ParsedMessage | null {
 
     // Only process incoming messages (from field = customer phone)
     const contact = change.contacts?.[0];
-    const phone = normalizePhone(msg.from || contact?.wa_id || '');
+    const phone = normalizePhoneFromJid(msg.from || contact?.wa_id || '');
     if (!phone) return null;
 
     const name = contact?.profile?.name ?? null;

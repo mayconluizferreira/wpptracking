@@ -66,7 +66,11 @@ export async function processIncomingMessage(
   // Early path for outgoing messages: only detect trigger phrases, no lead creation
   if (parsed.direction === 'saida') {
     try {
-      const phone = normalizePhone(parsed.phone);
+      // parsed.phone already comes normalized from the parser (from the
+      // WhatsApp JID, which always carries the full country code) — do not
+      // re-run normalizePhone() here, it would incorrectly rewrite non-BR
+      // numbers (see normalizePhoneFromJid for why).
+      const phone = parsed.phone;
       const lead = await db.query.leads.findFirst({
         where: and(eq(leads.telefone, phone), eq(leads.tenant_id, tenantId)),
         orderBy: [desc(leads.data_entrada)],
@@ -90,7 +94,8 @@ export async function processIncomingMessage(
   await logWebhook(tenantId, parsed.source, parsed.rawPayload, false, null);
 
   try {
-    const phone = normalizePhone(parsed.phone);
+    // Same as above — parsed.phone is already normalized, don't re-run normalizePhone().
+    const phone = parsed.phone;
     const cfg = await getSettings(tenantId);
 
     // 2. Find or create lead — only match leads from the same calendar day

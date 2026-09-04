@@ -1,5 +1,5 @@
 import type { ParsedMessage } from '../types/parsed-message';
-import { normalizePhone } from '../services/hash';
+import { normalizePhoneFromJid } from '../services/hash';
 
 interface EvolutionPayload {
   event: string;
@@ -81,7 +81,7 @@ export function parseEvolution(payload: unknown): ParsedMessage | null {
     if (!key) return null;
 
     const rawPhone = key.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
-    const phone = normalizePhone(rawPhone);
+    const phone = normalizePhoneFromJid(rawPhone);
     if (!phone) return null;
 
     const isOutgoing = key.fromMe === true;
